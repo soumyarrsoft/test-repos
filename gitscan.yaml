@@ -1,0 +1,42 @@
+trigger:
+  branches:
+    include:
+      - '*'
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+steps:
+  - task: UsePythonVersion@0
+    inputs:
+      versionSpec: '3.x'
+      addToPath: true
+
+  - script: |
+      echo "Installing Gitleaks..."
+      pip install gitleaks
+    displayName: 'Install Gitleaks'
+
+  - script: |
+      echo "Running Gitleaks scan..."
+      gitleaks detect --source . --verbose --report-path gitleaks-report.json
+    displayName: 'Run Gitleaks Secret Scan'
+
+  - task: PublishBuildArtifacts@1
+    inputs:
+      PathtoPublish: 'gitleaks-report.json'
+      ArtifactName: 'Gitleaks-Report'
+    displayName: 'Publish Gitleaks Scan Report'
+
+  - task: Bash@3
+    inputs:
+      targetType: 'inline'
+      script: |
+        report_result=$(jq '.leaks | length' gitleaks-report.json)
+        if [ "$report_result" -gt "0" ]; then
+          echo "Secrets found in the codebase. Please fix the issues."
+          exit 1
+        else
+          echo "No secrets found in the codebase."
+        fi
+    displayName: 'Check Gitleaks Scan Result'
