@@ -1,0 +1,55 @@
+# Starter pipeline
+# Start with a minimal pipeline that you can customize to build and deploy your code.
+# Add steps that build, run tests, deploy, and more:
+# https://aka.ms/yaml
+
+trigger: none
+
+parameters:
+  - name: git_user_name
+    type: string
+    default: "your__team"
+
+variables:
+  - name: organization_uri
+    value: $[variables['System.CollectionUri']] 
+  - name: project_name
+    value: $[variables['System.TeamProject']]
+
+stages:
+  - stage: secret_scanning
+    displayName: Secret scanning with Gitleaks
+
+    jobs:
+      - job: Scan
+        pool:
+          vmImage: 'ubuntu-latest'
+
+        steps:
+          - checkout: self
+            clean: true
+            persistCredentials: true
+
+          - task: Bash@3
+            displayName: 'Install Gitleaks'
+            inputs:
+              targetType: "inline"
+              script: |
+                git clone https://github.com/gitleaks/gitleaks.git
+                cd gitleaks
+                make build
+
+          - task: Bash@3
+            displayName: 'Git clone and scan'
+            inputs:
+              filePath: './scan_azure_devops_secret.sh'
+              targetType: 'filePath'
+              arguments: >
+                -o '$(organization_uri)'
+                -p '$(project_name)'
+                -c '${{ parameters.application_insights_connection_string }}'
+                -n '${{ parameters.event_name }}'
+            env:
+              AZURE_DEVOPS_EXT_PAT: $(System.AccessToken)
+              GIT_USER_EMAIL: ${{ parameters.git_user_email }}
+              GIT_USER_NAME: ${{ parameters.git_user_name }}
