@@ -42,7 +42,7 @@ stages:
           - task: Bash@3
             displayName: 'Git clone and scan'
             inputs:
-              filePath: './scan_azure_devops_secret.sh'
+              filePath: './scan_secret.sh'
               targetType: 'filePath'
               arguments: >
                 -o '$(organization_uri)'
